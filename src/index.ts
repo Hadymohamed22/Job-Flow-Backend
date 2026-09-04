@@ -22,6 +22,25 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/applications", ApplicationRouter);
 app.use("/auth", UserRouter);
 
+app.use("/applications", ApplicationRouter);
+app.use("/auth", UserRouter);
+
+app.use(
+  (
+    err: any,
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+  ) => {
+    console.error("Unhandled error:", err);
+    return res.status(400).json({
+      error: true,
+      message:
+        err.message || "Something went wrong while processing the request",
+    });
+  },
+);
+
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
