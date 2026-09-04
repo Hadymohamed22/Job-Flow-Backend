@@ -11,6 +11,7 @@ import { upload } from "../config/multer";
 import path from "path";
 import { AuthRequest } from "../types/global";
 import mongoose from "mongoose";
+import { deleteImage, uploadImageBuffer } from "../config/cloudinary";
 
 const router = express.Router();
 
@@ -296,12 +297,11 @@ router.post(
       }
 
       const image = req.file;
-
-      if (!image)
-        return res.status(400).json({
-          error: true,
-          message: "Company image not uploaded !",
-        });
+      if (!image) {
+        return res
+          .status(400)
+          .json({ error: true, message: "Company image not uploaded !" });
+      }
 
       const {
         companyName,
@@ -316,7 +316,10 @@ router.post(
         contactLink,
       } = req.body;
 
-      const companyImageURL = `${req.protocol}://${req.get("host")}/uploads/${image.filename}`;
+      const { url: companyImageURL, publicId } = await uploadImageBuffer(
+        image.buffer,
+      );
+
       const initialStatus = current_status || "Applied";
       const notesArray: string[] = notes
         ? Array.isArray(notes)
@@ -332,15 +335,10 @@ router.post(
         jobURL,
         source,
         current_status,
-        status_history: [
-          {
-            status: initialStatus,
-            changed_at: new Date(),
-          },
-        ],
+        status_history: [{ status: initialStatus, changed_at: new Date() }],
         date,
         notes: notesArray.map((text) => ({ text })),
-        fileName: image.filename,
+        fileName: publicId, // 👈 بقت بتخزن الـ Cloudinary public_id مش اسم ملف محلي
         contactLink: contactLink ?? null,
         companyImageURL,
         userId: req.user.id,
@@ -439,10 +437,12 @@ router.patch(
     ];
 
     if (!req.user) {
-      return res.status(401).json({
-        error: true,
-        message: "Unauthorized: user not found in request.",
-      });
+      return res
+        .status(401)
+        .json({
+          error: true,
+          message: "Unauthorized: user not found in request.",
+        });
     }
 
     try {
@@ -460,41 +460,28 @@ router.patch(
       });
 
       if (!isApplicationExist) {
-        if (req.file) {
-          fs.unlink(req.file.path, (err) => {
-            if (err) console.error("Failed to delete orphan file:", err);
+        return res
+          .status(404)
+          .json({
+            error: true,
+            message: "There is no application matching this id!",
           });
-        }
-
-        return res.status(404).json({
-          error: true,
-          message: "There is no application matching this id!",
-        });
       }
 
       if (req.file) {
+        // امسح الصورة القديمة من Cloudinary لو موجودة
         if (isApplicationExist.fileName) {
-          const oldPath = path.join(
-            __dirname,
-            "../assets/images",
-            isApplicationExist.fileName,
-          );
-          fs.unlink(oldPath, (err) => {
-            if (err) console.error("Failed to delete old image:", err);
-          });
+          await deleteImage(isApplicationExist.fileName);
         }
-        const fileName = (req.file as Express.Multer.File).filename;
-        updateData.fileName = fileName;
-        updateData.companyImageURL = `${req.protocol}://${req.get(
-          "host",
-        )}/uploads/${fileName}`;
+        const { url, publicId } = await uploadImageBuffer(req.file.buffer);
+        updateData.fileName = publicId;
+        updateData.companyImageURL = url;
       }
 
       if (Object.keys(updateData).length === 0) {
-        return res.status(400).json({
-          error: true,
-          message: "No fields provided for update!",
-        });
+        return res
+          .status(400)
+          .json({ error: true, message: "No fields provided for update!" });
       }
 
       const updatedApplication = await Application.findByIdAndUpdate(
@@ -506,23 +493,18 @@ router.patch(
         },
       );
 
-      const companyImageURL = `${req.protocol}://${req.get("host")}/uploads/${
-        updatedApplication!.fileName
-      }`;
-
       return res.status(200).json({
         message: "Application updated successfully!",
-        data: {
-          ...updatedApplication!.toObject(),
-          companyImageURL,
-        },
+        data: { ...updatedApplication!.toObject() },
       });
     } catch (error) {
       console.error("Error updating application:", error);
-      return res.status(500).json({
-        message: "Internal Server Error",
-        error: (error as Error).message,
-      });
+      return res
+        .status(500)
+        .json({
+          message: "Internal Server Error",
+          error: (error as Error).message,
+        });
     }
   },
 );
@@ -530,10 +512,12 @@ router.patch(
 // Delete
 router.delete("/:id", verifyToken, async (req: AuthRequest, res) => {
   if (!req.user) {
-    return res.status(401).json({
-      error: true,
-      message: "Unauthorized: user not found in request.",
-    });
+    return res
+      .status(401)
+      .json({
+        error: true,
+        message: "Unauthorized: user not found in request.",
+      });
   }
 
   const application = await Application.findOneAndDelete({
@@ -542,28 +526,21 @@ router.delete("/:id", verifyToken, async (req: AuthRequest, res) => {
   });
 
   if (!application) {
-    return res.status(400).json({
-      message: "There is no application match this id !",
-      error: true,
-    });
+    return res
+      .status(400)
+      .json({
+        message: "There is no application match this id !",
+        error: true,
+      });
   }
 
-  const filePath = path.join(
-    __dirname,
-    "..",
-    "assets",
-    "images",
-    application.fileName,
-  );
-  fs.unlink(filePath, (err) => {
-    if (err)
-      console.error("Failed to delete file for deleted application:", err);
-  });
+  if (application.fileName) {
+    await deleteImage(application.fileName);
+  }
 
-  return res.status(200).json({
-    message: "Application Deleted Successfully !",
-    data: application,
-  });
+  return res
+    .status(200)
+    .json({ message: "Application Deleted Successfully !", data: application });
 });
 
 // Edit Application TimeLine

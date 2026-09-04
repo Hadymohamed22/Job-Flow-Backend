@@ -17,7 +17,6 @@ app.use(express.json());
 // Middlewares
 app.use(logger);
 app.use(express.urlencoded({ extended: true }));
-app.use("/uploads", express.static(path.join(__dirname, "/assets/images")));
 
 // Routers
 app.use("/applications", ApplicationRouter);
