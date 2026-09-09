@@ -1,16 +1,10 @@
+import "dotenv/config";
 import { v2 as cloudinary } from "cloudinary";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
-console.log("Cloudinary env check:", {
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  cloud_name_length: process.env.CLOUDINARY_CLOUD_NAME?.length,
-  api_key_length: process.env.CLOUDINARY_API_KEY?.length,
-  api_secret_length: process.env.CLOUDINARY_API_SECRET?.length,
 });
 
 export const uploadImageBuffer = (
@@ -21,7 +15,10 @@ export const uploadImageBuffer = (
     const stream = cloudinary.uploader.upload_stream(
       { folder },
       (error, result) => {
-        if (error || !result) return reject(error);
+        if (error) {
+          console.dir(error, { depth: null });
+          return reject(error);
+        }
         resolve({ url: result.secure_url, publicId: result.public_id });
       },
     );

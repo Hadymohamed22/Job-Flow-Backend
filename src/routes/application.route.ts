@@ -1,4 +1,4 @@
-import fs from "fs";
+import { v2 as cloudinary } from "cloudinary";
 import express from "express";
 import Application from "../models/applications.model";
 import validate from "../middlewares/validate.middleware";
@@ -143,6 +143,12 @@ router.get(
   verifyToken,
   async (req: AuthRequest, res) => {
     try {
+      const result = await cloudinary.uploader.upload(
+        "https://res.cloudinary.com/demo/image/upload/sample.jpg",
+      );
+
+      console.log("result", result);
+
       const userId = req.user?.id;
 
       if (!userId) {
@@ -316,6 +322,12 @@ router.post(
         contactLink,
       } = req.body;
 
+      console.log("FILE INFO:", {
+        originalname: image.originalname,
+        mimetype: image.mimetype,
+        size: image.size,
+        hasBuffer: !!image.buffer,
+      });
       const { url: companyImageURL, publicId } = await uploadImageBuffer(
         image.buffer,
       );
@@ -437,12 +449,10 @@ router.patch(
     ];
 
     if (!req.user) {
-      return res
-        .status(401)
-        .json({
-          error: true,
-          message: "Unauthorized: user not found in request.",
-        });
+      return res.status(401).json({
+        error: true,
+        message: "Unauthorized: user not found in request.",
+      });
     }
 
     try {
@@ -460,12 +470,10 @@ router.patch(
       });
 
       if (!isApplicationExist) {
-        return res
-          .status(404)
-          .json({
-            error: true,
-            message: "There is no application matching this id!",
-          });
+        return res.status(404).json({
+          error: true,
+          message: "There is no application matching this id!",
+        });
       }
 
       if (req.file) {
@@ -499,12 +507,10 @@ router.patch(
       });
     } catch (error) {
       console.error("Error updating application:", error);
-      return res
-        .status(500)
-        .json({
-          message: "Internal Server Error",
-          error: (error as Error).message,
-        });
+      return res.status(500).json({
+        message: "Internal Server Error",
+        error: (error as Error).message,
+      });
     }
   },
 );
@@ -512,12 +518,10 @@ router.patch(
 // Delete
 router.delete("/:id", verifyToken, async (req: AuthRequest, res) => {
   if (!req.user) {
-    return res
-      .status(401)
-      .json({
-        error: true,
-        message: "Unauthorized: user not found in request.",
-      });
+    return res.status(401).json({
+      error: true,
+      message: "Unauthorized: user not found in request.",
+    });
   }
 
   const application = await Application.findOneAndDelete({
@@ -526,12 +530,10 @@ router.delete("/:id", verifyToken, async (req: AuthRequest, res) => {
   });
 
   if (!application) {
-    return res
-      .status(400)
-      .json({
-        message: "There is no application match this id !",
-        error: true,
-      });
+    return res.status(400).json({
+      message: "There is no application match this id !",
+      error: true,
+    });
   }
 
   if (application.fileName) {
