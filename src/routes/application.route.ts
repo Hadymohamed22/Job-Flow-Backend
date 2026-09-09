@@ -143,12 +143,6 @@ router.get(
   verifyToken,
   async (req: AuthRequest, res) => {
     try {
-      const result = await cloudinary.uploader.upload(
-        "https://res.cloudinary.com/demo/image/upload/sample.jpg",
-      );
-
-      console.log("result", result);
-
       const userId = req.user?.id;
 
       if (!userId) {
