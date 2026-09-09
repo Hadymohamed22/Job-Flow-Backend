@@ -42,12 +42,8 @@ app.use(
 );
 
 connectDB()
-  .then(() => {
-    console.log("Database connected successfully");
-  })
-  .catch((err) => {
-    console.error("Database connection failed:", err);
-  });
+  .then(() => console.log("Database connected successfully"))
+  .catch((err) => console.error("Database connection failed:", err));
 
 if (process.env.NODE_ENV !== "production") {
   app.listen(PORT, () => {
