@@ -17,6 +17,15 @@ app.use(express.urlencoded({ extended: true }));
 // Middlewares
 app.use(logger);
 
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Routers
 app.use("/applications", ApplicationRouter);
 app.use("/auth", UserRouter);
@@ -41,11 +50,11 @@ app.use(
   },
 );
 
-connectDB()
-  .then(() => console.log("Database connected successfully"))
-  .catch((err) => console.error("Database connection failed:", err));
-
 if (process.env.NODE_ENV !== "production") {
+  connectDB()
+    .then(() => console.log("Database connected successfully"))
+    .catch((err) => console.error("Database connection failed:", err));
+
   app.listen(PORT, () => {
     console.log("Server Is Running");
     console.log("======================");
