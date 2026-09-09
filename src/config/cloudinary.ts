@@ -6,6 +6,13 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+console.log("Cloudinary env check:", {
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  cloud_name_length: process.env.CLOUDINARY_CLOUD_NAME?.length,
+  api_key_length: process.env.CLOUDINARY_API_KEY?.length,
+  api_secret_length: process.env.CLOUDINARY_API_SECRET?.length,
+});
+
 export const uploadImageBuffer = (
   buffer: Buffer,
   folder = "jobflow",
